@@ -1,4 +1,4 @@
-# [elric16.github.io](elric16.github.io)
+# [WEB](https://elric16.github.io/)
 
 Solid State by HTML5 UP
 html5up.net | @ajlkn
