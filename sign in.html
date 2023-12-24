@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LogSign</title>
+    <style>
+        body {
+            position: relative;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-image: url('https://media.giphy.com/media/jodmOdls2wi5y/giphy.gif');
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: white;
+        }
+
+        /* Overlay to darken the GIF */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Text styles */
+        p {
+            font-size: 85px;
+            text-align: center;
+            font-family: Georgia, serif;
+            font-weight: bolder;
+            z-index: 1;
+        }
+
+        /* Button styles */
+        .back-btn {
+            background: none;
+
+            font-size: 24px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            z-index: 1;
+            background-color: #505050;
+            color: black;
+            border: 2px solid
+        }
+        .back-btn:focus {
+            outline: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+<div class="overlay"></div>
+<p>Sorry, you are not signed in for beta-test</p>
+<button class="back-btn"><p><a href="index.html">Home</a></p></button>
+</body>
+</html>
