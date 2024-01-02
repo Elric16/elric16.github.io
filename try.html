@@ -21,8 +21,17 @@
 		<select id="finalNode"></select>
 		<button onclick="calculateShortestPath()">Calculate</button>
 		<p id="shortestPath"></p>
-		<button onclick="modifyGraph()">Modify Graph</button>
-		<button onclick="addNewNode()">Add New Node</button>
+		<form id="nodeForm">
+			<label for="nodeLabel">Node Label:</label>
+			<input type="text" id="nodeLabel" name="nodeLabel">
+			<label for="connections">Connections (comma-separated):</label>
+			<input type="text" id="connections" name="connections">
+			<label for="costs">Costs (comma-separated):</label>
+			<input type="text" id="costs" name="costs">
+			<button type="submit">Add / Modify Node</button>
+		</form>
+		<button onclick="toggleSort()">Toggle Sort </button>
+		<p id="result">A->Z</p>
 	</div>
 	<div class="history-container">
 		<h2>History Steps</h2>
@@ -44,14 +53,11 @@
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.0.0/dist/vis-network.min.js"></script>
 <script>
 	let graph = {
-		'Q': {'B':11, 'A':10, 'I':8},
-		'B': {'Q':11, 'J':7},
-		'J': {'B':7, 'N':10, 'G':11, 'A':1},
-		'N': {'J':10, 'G':2},
-		'G': {'J':11, 'N':2, 'P':7},
-		'P': {'G':7, 'A':9,},
-		'A': {'P':9, 'J':1, 'Q':10, 'I':6,},
-		'I': {'Q':8, 'A':6}
+		'Q': [{ node: 'B', cost: 10 }, { node: 'A', cost: 10 }, { node: 'C', cost: 10 }],
+		'B': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
+		'A': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
+		'C': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
+		//... rest of the graph
 	};
 
 	let nodes = new vis.DataSet([]);
@@ -62,35 +68,7 @@
 	const network = new vis.Network(container, data, options);
 
 	let historySteps = [];
-
-	function modifyGraph() {
-		const node = prompt('Enter node to modify connections and costs for:');
-		const connections = prompt(`Enter connections for node ${node} (comma-separated):`).split(',');
-		const costs = {};
-
-		connections.forEach(connection => {
-			const cost = parseFloat(prompt(`Enter cost for connection ${node} to ${connection}:`));
-			costs[connection] = cost;
-		});
-
-		if (graph.hasOwnProperty(node)) {
-			graph[node] = costs;
-			updateVisNetwork();
-		} else {
-			alert('Invalid node!');
-		}
-	}
-
-	function addNewNode() {
-		const newNode = prompt('Enter the label for the new node:');
-		if (newNode && !graph.hasOwnProperty(newNode)) {
-			graph[newNode] = {};
-			updateVisNetwork();
-			updateNodeDropdowns();
-		} else {
-			alert('Invalid or existing node!');
-		}
-	}
+	let sortAscending = true;
 
 	function updateVisNetwork() {
 		nodes.clear();
@@ -99,7 +77,7 @@
 		nodes.add(Object.keys(graph).map(node => ({ id: node, label: node })));
 		edges.add(
 				Object.entries(graph).flatMap(([node, connections]) =>
-						Object.entries(connections).map(([target, cost]) => ({ from: node, to: target, label: String(cost) }))
+						connections.map(({ node: target, cost }) => ({ from: node, to: target, label: String(cost) }))
 				)
 		);
 	}
@@ -107,6 +85,9 @@
 	function updateNodeDropdowns() {
 		const initialNodeDropdown = document.getElementById('initialNode');
 		const finalNodeDropdown = document.getElementById('finalNode');
+
+		initialNodeDropdown.innerHTML = '';
+		finalNodeDropdown.innerHTML = '';
 
 		Object.keys(graph).forEach(node => {
 			const optionInitial = document.createElement('option');
@@ -142,6 +123,14 @@
 			let current = queue.shift();
 			visited[current] = true;
 
+			let sortedNeighbors = graph[current].sort((a, b) => {
+				if (sortAscending) {
+					return a.node.localeCompare(b.node);
+				} else {
+					return b.node.localeCompare(a.node);
+				}
+			});
+
 			historySteps.push({
 				toAnalyze: queue.slice(),
 				completed: Object.keys(visited).filter(node => visited[node]),
@@ -149,8 +138,9 @@
 				costs: { ...distance }
 			});
 
-			Object.keys(graph[current]).forEach(neighbor => {
-				let newDistance = distance[current] + graph[current][neighbor];
+			sortedNeighbors.forEach(neighborObj => {
+				let neighbor = neighborObj.node;
+				let newDistance = distance[current] + neighborObj.cost;
 				if (newDistance < distance[neighbor]) {
 					distance[neighbor] = newDistance;
 					if (!visited[neighbor]) {
@@ -166,11 +156,13 @@
 		while (currentNode !== initialNode) {
 			let found = false;
 			Object.keys(graph).forEach(node => {
-				if (graph[node][currentNode] !== undefined && distance[node] + graph[node][currentNode] === distance[currentNode]) {
-					path = `${node}<-${path}`;
-					currentNode = node;
-					found = true;
-				}
+				graph[node].forEach(neighborObj => {
+					if (neighborObj.node === currentNode && distance[node] + neighborObj.cost === distance[currentNode]) {
+						path = `${node}<-${path}`;
+						currentNode = node;
+						found = true;
+					}
+				});
 			});
 			if (!found) {
 				break;
@@ -198,6 +190,36 @@
 			historyBody.appendChild(row);
 		});
 	}
+
+	const resultElement = document.getElementById("result");
+	function toggleSort() {
+		sortAscending = !sortAscending;
+
+		if (sortAscending) {
+			resultElement.textContent = "A->Z";
+		} else {
+			resultElement.textContent = "Z->A";
+		}
+	}
+
+	document.getElementById('nodeForm').addEventListener('submit', function(event) {
+		event.preventDefault();
+
+		const nodeLabel = document.getElementById('nodeLabel').value;
+		const connections = document.getElementById('connections').value.split(',');
+		const costs = document.getElementById('costs').value.split(',').map(parseFloat);
+
+		if (graph.hasOwnProperty(nodeLabel)) {
+			// Modify existing node
+			graph[nodeLabel] = connections.map((node, index) => ({ node, cost: costs[index] }));
+		} else {
+			// Add new node
+			graph[nodeLabel] = connections.map((node, index) => ({ node, cost: costs[index] }));
+		}
+
+		updateVisNetwork();
+		updateNodeDropdowns();
+	});
 
 	updateNodeDropdowns();
 	updateVisNetwork();
