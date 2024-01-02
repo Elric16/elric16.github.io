@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Shortest Path</title>
+	<style>
+		body {background-color: #2c2c2c; color: white}
+		.container { display: flex; justify-content: space-between; align-items: flex-start; }
+		.graph-container { width: 50%; }
+		.history-container { width: 45%; border: 1px solid #ccc; padding: 10px; }
+		.graph-visualization { height: 400px; border: 1px solid #ccc; }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="graph-container">
+		<h1>Shortest Path Calculation</h1>
+		<p>Select initial and final nodes:</p>
+		<label for="initialNode">Initial Node:</label>
+		<select id="initialNode"></select>
+		<label for="finalNode">Final Node:</label>
+		<select id="finalNode"></select>
+		<button onclick="calculateShortestPath()">Calculate</button>
+		<p id="shortestPath"></p>
+		<button onclick="modifyGraph()">Modify Graph</button>
+		<button onclick="addNewNode()">Add New Node</button>
+	</div>
+	<div class="history-container">
+		<h2>History Steps</h2>
+		<table id="historyTable">
+			<thead>
+			<tr>
+				<th>Step</th>
+				<th>To Analyze</th>
+				<th>Completed</th>
+				<th>Analyzing</th>
+				<th>Costs</th>
+			</tr>
+			</thead>
+			<tbody id="historyBody"></tbody>
+		</table>
+	</div>
+</div>
+<div class="graph-visualization" id="graphVisualization"></div>
+<script src="https://cdn.jsdelivr.net/npm/vis-network@9.0.0/dist/vis-network.min.js"></script>
+<script>
+	let graph = {
+		'Q': {'B':11, 'A':10, 'I':8},
+		'B': {'Q':11, 'J':7},
+		'J': {'B':7, 'N':10, 'G':11, 'A':1},
+		'N': {'J':10, 'G':2},
+		'G': {'J':11, 'N':2, 'P':7},
+		'P': {'G':7, 'A':9,},
+		'A': {'P':9, 'J':1, 'Q':10, 'I':6,},
+		'I': {'Q':8, 'A':6}
+	};
+
+	let nodes = new vis.DataSet([]);
+	let edges = new vis.DataSet([]);
+	const container = document.getElementById('graphVisualization');
+	const data = { nodes, edges };
+	const options = {};
+	const network = new vis.Network(container, data, options);
+
+	let historySteps = [];
+
+	function modifyGraph() {
+		const node = prompt('Enter node to modify connections and costs for:');
+		const connections = prompt(`Enter connections for node ${node} (comma-separated):`).split(',');
+		const costs = {};
+
+		connections.forEach(connection => {
+			const cost = parseFloat(prompt(`Enter cost for connection ${node} to ${connection}:`));
+			costs[connection] = cost;
+		});
+
+		if (graph.hasOwnProperty(node)) {
+			graph[node] = costs;
+			updateVisNetwork();
+		} else {
+			alert('Invalid node!');
+		}
+	}
+
+	function addNewNode() {
+		const newNode = prompt('Enter the label for the new node:');
+		if (newNode && !graph.hasOwnProperty(newNode)) {
+			graph[newNode] = {};
+			updateVisNetwork();
+			updateNodeDropdowns();
+		} else {
+			alert('Invalid or existing node!');
+		}
+	}
+
+	function updateVisNetwork() {
+		nodes.clear();
+		edges.clear();
+
+		nodes.add(Object.keys(graph).map(node => ({ id: node, label: node })));
+		edges.add(
+				Object.entries(graph).flatMap(([node, connections]) =>
+						Object.entries(connections).map(([target, cost]) => ({ from: node, to: target, label: String(cost) }))
+				)
+		);
+	}
+
+	function updateNodeDropdowns() {
+		const initialNodeDropdown = document.getElementById('initialNode');
+		const finalNodeDropdown = document.getElementById('finalNode');
+
+		Object.keys(graph).forEach(node => {
+			const optionInitial = document.createElement('option');
+			optionInitial.value = node;
+			optionInitial.textContent = node;
+
+			const optionFinal = document.createElement('option');
+			optionFinal.value = node;
+			optionFinal.textContent = node;
+
+			initialNodeDropdown.appendChild(optionInitial);
+			finalNodeDropdown.appendChild(optionFinal);
+		});
+	}
+
+	function calculateShortestPath() {
+		historySteps = [];
+		const initialNode = document.getElementById('initialNode').value;
+		const finalNode = document.getElementById('finalNode').value;
+
+		let distance = {};
+		let visited = {};
+		let queue = [initialNode];
+
+		Object.keys(graph).forEach(node => {
+			distance[node] = Infinity;
+			visited[node] = false;
+		});
+
+		distance[initialNode] = 0;
+
+		while (queue.length > 0) {
+			let current = queue.shift();
+			visited[current] = true;
+
+			historySteps.push({
+				toAnalyze: queue.slice(),
+				completed: Object.keys(visited).filter(node => visited[node]),
+				analyzing: [current],
+				costs: { ...distance }
+			});
+
+			Object.keys(graph[current]).forEach(neighbor => {
+				let newDistance = distance[current] + graph[current][neighbor];
+				if (newDistance < distance[neighbor]) {
+					distance[neighbor] = newDistance;
+					if (!visited[neighbor]) {
+						queue.push(neighbor);
+					}
+				}
+			});
+		}
+
+		let path = `${finalNode}`;
+		let currentNode = finalNode;
+
+		while (currentNode !== initialNode) {
+			let found = false;
+			Object.keys(graph).forEach(node => {
+				if (graph[node][currentNode] !== undefined && distance[node] + graph[node][currentNode] === distance[currentNode]) {
+					path = `${node}<-${path}`;
+					currentNode = node;
+					found = true;
+				}
+			});
+			if (!found) {
+				break;
+			}
+		}
+
+		document.getElementById('shortestPath').innerText = `Shortest route between ${initialNode} to ${finalNode}: ${distance[finalNode]} \n${path}`;
+
+		updateHistoryTable();
+	}
+
+	function updateHistoryTable() {
+		const historyBody = document.getElementById('historyBody');
+		historyBody.innerHTML = '';
+
+		historySteps.forEach((step, index) => {
+			const row = document.createElement('tr');
+			row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${step.toAnalyze.join(', ')}</td>
+                <td>${step.completed.join(', ')}</td>
+                <td>${step.analyzing.join(', ')}</td>
+                <td>${JSON.stringify(step.costs)}</td>
+            `;
+			historyBody.appendChild(row);
+		});
+	}
+
+	updateNodeDropdowns();
+	updateVisNetwork();
+</script>
+</body>
+</html>
