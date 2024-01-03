@@ -62,11 +62,7 @@
 <div class="graph-visualization" id="graphVisualization"></div>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.0.0/dist/vis-network.min.js"></script>
 <script>
-	let graph = {
-		//'Q': [{ node: 'B', cost: 10 }, { node: 'A', cost: 10 }, { node: 'C', cost: 10 }],
-		
-		//... reszta grafu
-	};
+	let graph = {};
 
 	let nodes = new vis.DataSet([]);
 	let edges = new vis.DataSet([]);
@@ -156,6 +152,8 @@
 					}
 				}
 			});
+
+			queue.sort((a, b) => distance[a] - distance[b]);
 		}
 
 		let path = `${finalNode}`;
