@@ -21,14 +21,24 @@
 		<select id="finalNode"></select>
 		<button onclick="calculateShortestPath()">Calculate</button>
 		<p id="shortestPath"></p>
-		<form id="nodeForm">
+		<form id="addNodeForm">
 			<label for="nodeLabel">Node Label:</label>
 			<input type="text" id="nodeLabel" name="nodeLabel">
 			<label for="connections">Connections (comma-separated):</label>
 			<input type="text" id="connections" name="connections">
 			<label for="costs">Costs (comma-separated):</label>
 			<input type="text" id="costs" name="costs">
-			<button type="submit">Add / Modify Node</button>
+			<button type="submit">Add Node</button>
+		</form>
+		<form id="modifyNodeForm">
+			<label for="existingNode">Select Node to Modify:</label>
+			<select id="existingNode"></select>
+			<label for="modifiedConnections">Modified Connections (comma-separated):</label>
+			<input type="text" id="modifiedConnections" name="modifiedConnections">
+			<label for="modifiedCosts">Modified Costs (comma-separated):</label>
+			<input type="text" id="modifiedCosts" name="modifiedCosts">
+			<button type="button" onclick="modifyNode()">Modify Node</button>
+			<p id="existingNodeInfo"></p>
 		</form>
 		<button onclick="toggleSort()">Toggle Sort </button>
 		<p id="result">A->Z</p>
@@ -53,11 +63,9 @@
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.0.0/dist/vis-network.min.js"></script>
 <script>
 	let graph = {
-		'Q': [{ node: 'B', cost: 10 }, { node: 'A', cost: 10 }, { node: 'C', cost: 10 }],
-		'B': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
-		'A': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
-		'C': [{ node: 'Q', cost: 10 }, { node: 'J', cost: 7 }],
-		//... rest of the graph
+		//'Q': [{ node: 'B', cost: 10 }, { node: 'A', cost: 10 }, { node: 'C', cost: 10 }],
+		
+		//... reszta grafu
 	};
 
 	let nodes = new vis.DataSet([]);
@@ -202,27 +210,62 @@
 		}
 	}
 
-	document.getElementById('nodeForm').addEventListener('submit', function(event) {
+	function fillExistingNodeDropdown() {
+		const existingNodeDropdown = document.getElementById('existingNode');
+
+		existingNodeDropdown.innerHTML = '';
+
+		Object.keys(graph).forEach(node => {
+			const option = document.createElement('option');
+			option.value = node;
+			option.textContent = node;
+
+			existingNodeDropdown.appendChild(option);
+		});
+	}
+
+	function displayExistingNodeInfo() {
+		const selectedNode = document.getElementById('existingNode').value;
+
+		if (graph.hasOwnProperty(selectedNode)) {
+			const connections = graph[selectedNode].map(connection => connection.node).join(', ');
+			const costs = graph[selectedNode].map(connection => connection.cost).join(', ');
+
+			const existingNodeInfo = `Existing Connections: ${connections}<br>Existing Costs: ${costs}`;
+			document.getElementById('existingNodeInfo').innerHTML = existingNodeInfo;
+		} else {
+			document.getElementById('existingNodeInfo').innerHTML = 'Selected node not found.';
+		}
+	}
+
+	function modifyNode() {
+		const selectedNode = document.getElementById('existingNode').value;
+		const modifiedConnections = document.getElementById('modifiedConnections').value.split(',');
+		const modifiedCosts = document.getElementById('modifiedCosts').value.split(',').map(parseFloat);
+
+		if (graph.hasOwnProperty(selectedNode)) {
+			graph[selectedNode] = modifiedConnections.map((node, index) => ({ node, cost: modifiedCosts[index] }));
+			updateVisNetwork();
+			updateNodeDropdowns();
+		}
+	}
+
+	document.getElementById('addNodeForm').addEventListener('submit', function(event) {
 		event.preventDefault();
 
 		const nodeLabel = document.getElementById('nodeLabel').value;
 		const connections = document.getElementById('connections').value.split(',');
 		const costs = document.getElementById('costs').value.split(',').map(parseFloat);
 
-		if (graph.hasOwnProperty(nodeLabel)) {
-			// Modify existing node
+		if (!graph.hasOwnProperty(nodeLabel)) {
 			graph[nodeLabel] = connections.map((node, index) => ({ node, cost: costs[index] }));
-		} else {
-			// Add new node
-			graph[nodeLabel] = connections.map((node, index) => ({ node, cost: costs[index] }));
+			updateVisNetwork();
+			updateNodeDropdowns();
 		}
-
-		updateVisNetwork();
-		updateNodeDropdowns();
 	});
 
-	updateNodeDropdowns();
-	updateVisNetwork();
+	document.getElementById('existingNode').addEventListener('change', displayExistingNodeInfo);
+	fillExistingNodeDropdown();
 </script>
 </body>
 </html>
