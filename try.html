@@ -153,7 +153,7 @@
 				}
 			});
 
-			queue.sort((a, b) => distance[a] - distance[b]);
+			queue.sort((a, b) => distance[a] - distance[b] || a.localeCompare(b));
 		}
 
 		let path = `${finalNode}`;
